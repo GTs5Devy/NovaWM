@@ -1,0 +1,19 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Build outputs
+target/
+out/
+
+# Misc
+.DS_Store
+*.pem
+*.env
+.wix/
+
+# IDE files
+.vs/
+.idea/
+
+# vi files
+.*.swp
+.*.swo

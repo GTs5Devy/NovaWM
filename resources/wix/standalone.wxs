@@ -1,0 +1,148 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="GlazeWM"
+    Version="$(var.VERSION_NUMBER)"
+    UpgradeCode="ef0f849b-d90d-4647-bb26-730c6fce5f9e"
+    Manufacturer="Glzr Software Pte. Ltd."
+    Language="1033"
+    Scope="perMachine"
+  >
+    <!--
+      Reinstall all files; rewrite all registry entries; reinstall all shortcuts.
+      Ref: https://docs.microsoft.com/en-us/windows/win32/msi/reinstallmode
+    -->
+    <Property Id="REINSTALLMODE" Value="amus" />
+
+    <!-- Allow version downgrades. -->
+    <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+
+    <!-- Set icon used by installer. -->
+    <Icon Id="Custom_Ico" SourceFile="resources/assets/icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Custom_Ico" />
+
+    <!-- Enable CAB embed, otherwise, a separate .cab file is created. -->
+    <MediaTemplate EmbedCab="yes" />
+
+		<UIRef Id="Custom_UI" />
+
+    <!-- User input variables for whether to install shortcuts. -->
+    <Property Id="ENABLE_DESKTOP_SHORTCUT" Secure="yes" />
+    <Property Id="ENABLE_START_MENU_SHORTCUT" Value="1" Secure="yes" />
+
+    <Feature Id="Custom_ProductFeature">
+      <ComponentRef Id="Custom_CreateInstallDir" />
+      <ComponentRef Id="Custom_InstallRootFiles" />
+      <ComponentRef Id="Custom_InstallCliFiles" />
+      <ComponentRef Id="Custom_AddDesktopShortcut" />
+      <ComponentRef Id="Custom_AddStartMenuShortcut" />
+      <ComponentRef Id="Custom_AddPathEnv" />
+      <ComponentRef Id="Custom_RemoveAutoLaunchRegistry" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="Custom_OrgDir" Name="glzr.io">
+        <Directory Id="INSTALLFOLDER" Name="GlazeWM">
+          <Component Id="Custom_CreateInstallDir">
+            <RegistryValue
+              Root="HKLM"
+              Key="SOFTWARE\glzr.io\GlazeWM"
+              Name="InstallDir"
+              Value="[INSTALLFOLDER]"
+              Type="string"
+              KeyPath="yes"
+            />
+          </Component>
+
+          <!-- Add main + watcher executable. -->
+          <Component Id="Custom_InstallRootFiles" Guid="73752F94-6589-4C7B-ABED-39D655A19714">
+            <File Id="Custom_RootExe" Source="$(var.EXE_DIR)/glazewm.exe" KeyPath="yes" />
+            <File Id="Custom_RootWatcherExe" Source="$(var.EXE_DIR)/glazewm-watcher.exe" />
+          </Component>
+
+          <!-- Add CLI executable. -->
+          <Directory Id="Custom_CliDir" Name="cli">
+            <Component Id="Custom_InstallCliFiles" Guid="916284d8-100c-4f37-8d8c-2722b01cb3dd">
+              <File Id="Custom_CliExe" Source="$(var.EXE_DIR)/glazewm-cli.exe" Name="glazewm.exe" KeyPath="yes" />
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Add shortcut to desktop. -->
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="Custom_AddDesktopShortcut" Condition="ENABLE_DESKTOP_SHORTCUT = 1">
+        <Shortcut
+          Id="Custom_DesktopShortcut"
+          Name="GlazeWM"
+          Description="Launch GlazeWM"
+          Target="[INSTALLFOLDER]glazewm.exe"
+        />
+
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\glzr.io\GlazeWM"
+          Name="DesktopShortcutInstalled"
+          Type="integer"
+          Value="1"
+          KeyPath="yes"
+        />
+      </Component>
+    </StandardDirectory>
+
+    <!-- Add shortcut to Start Menu. -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="Custom_AddStartMenuShortcut" Condition="ENABLE_START_MENU_SHORTCUT = 1">
+        <Shortcut
+          Id="Custom_StartMenuShortcut"
+          Name="GlazeWM"
+          Description="Launch GlazeWM"
+          Target="[INSTALLFOLDER]glazewm.exe"
+        />
+
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\glzr.io\GlazeWM"
+          Name="StartMenuShortcutInstalled"
+          Type="integer"
+          Value="1"
+          KeyPath="yes"
+        />
+      </Component>
+    </StandardDirectory>
+
+    <!-- Add CLI directory to PATH. -->
+    <Component Id="Custom_AddPathEnv" Guid="66a4be46-19ae-4ed4-944f-b01673887f64" KeyPath="yes">
+      <Environment
+        Id="Custom_PathEnv"
+        Value="[INSTALLFOLDER]\cli"
+        Name="PATH"
+        Permanent="no"
+        Part="first"
+        Action="set"
+        System="yes"
+      />
+    </Component>
+
+    <!-- Remove auto-launch registry values on uninstall. -->
+    <Component Id="Custom_RemoveAutoLaunchRegistry" Guid="B1A2C3D4-E5F6-47A8-9B0C-1234567890AB">
+      <!-- `RegistryValue` with `KeyPath="yes"` is needed for component state tracking. -->
+      <RegistryValue
+        Root="HKLM"
+        Key="SOFTWARE\glzr.io\GlazeWM"
+        Name="AutoLaunchCleanup"
+        Type="integer"
+        Value="1"
+        KeyPath="yes"
+      />
+      <RemoveRegistryValue
+        Root="HKCU"
+        Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+        Name="GlazeWM" />
+      <RemoveRegistryValue
+        Root="HKCU"
+        Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+        Name="GlazeWM" />
+    </Component>
+  </Package>
+</Wix>

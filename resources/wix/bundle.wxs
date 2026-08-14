@@ -1,0 +1,68 @@
+<Wix
+  xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+  xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <Bundle Name="GlazeWM" Version="$(var.VERSION_NUMBER)"
+    UpgradeCode="f57adff3-4521-4a6b-87b1-d34a7d9bae1e"
+    Manufacturer="Glzr Software Pte. Ltd."
+    DisableModify="yes"
+    DisableRemove="yes"
+    IconSourceFile="resources/assets/icon.ico"
+  >
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+        LicenseUrl=""
+        Theme="hyperlinkSidebarLicense"
+        ThemeFile="resources/wix/bundle-theme.xml"
+        LocalizationFile="resources/wix/bundle-theme.wxl"
+        SuppressOptionsUI="yes"
+        ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <!-- User input variable for whether to install GlazeWM and Zebar. -->
+    <Variable Name="Custom_InstallGlazeWM" Type="numeric" Value="1" bal:Overridable="yes" />
+    <Variable Name="Custom_InstallZebar" Type="numeric" Value="1" bal:Overridable="yes" />
+
+    <Chain>
+      <!-- GlazeWM MSI for x64 architectures. -->
+      <MsiPackage
+        Id="Custom_GlazeWMPackageX64"
+        SourceFile="out/installer-x64.msi"
+        InstallCondition="(VersionNT64 AND NOT NativeMachine) OR (NativeMachine = 34404)"
+        bal:DisplayInternalUICondition="1"
+        Permanent="yes"
+      />
+
+      <!-- GlazeWM MSI for arm64 architectures. -->
+      <MsiPackage
+        Id="Custom_GlazeWMPackageArm64"
+        SourceFile="out/installer-arm64.msi"
+        InstallCondition="NativeMachine = 43620"
+        bal:DisplayInternalUICondition="1"
+        Permanent="yes"
+      />
+
+      <!-- Zebar MSI for x64 architectures. -->
+      <MsiPackage
+        Id="Custom_ZebarPackageX64"
+        SourceFile="out/zebar-x64.msi"
+        InstallCondition="(VersionNT64 AND NOT NativeMachine) OR (NativeMachine = 34404) AND (Custom_InstallZebar = 1)"
+        bal:DisplayInternalUICondition="1"
+        Permanent="yes"
+      >
+        <MsiProperty Name="ADD_GLAZEWM_STARTER" Value="1" />
+      </MsiPackage>
+
+      <!-- Zebar MSI for arm64 architectures. -->
+      <MsiPackage
+        Id="Custom_ZebarPackageArm64"
+        SourceFile="out/zebar-arm64.msi"
+        InstallCondition="(NativeMachine = 43620) AND (Custom_InstallZebar = 1)"
+        bal:DisplayInternalUICondition="1"
+        Permanent="yes"
+      >
+        <MsiProperty Name="ADD_GLAZEWM_STARTER" Value="1" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>
