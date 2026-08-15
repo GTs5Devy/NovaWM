@@ -16,6 +16,12 @@ macro_rules! impl_position_getters_as_resizable {
   ($struct_name:ident) => {
     impl PositionGetters for $struct_name {
       fn to_rect(&self) -> anyhow::Result<Rect> {
+        if let Some(stack) =
+          self.parent().and_then(|parent| parent.as_stack().cloned())
+        {
+          return stack.to_rect();
+        }
+
         let parent = self
           .parent()
           .and_then(|parent| parent.as_direction_container().ok())

@@ -2,7 +2,9 @@ use anyhow::Context;
 use wm_common::WmEvent;
 use wm_platform::Direction;
 
-use super::{activate_workspace, deactivate_workspace, sort_workspaces};
+use super::{
+  activate_workspace, deactivate_empty_dynamic_workspace, sort_workspaces,
+};
 use crate::{
   commands::container::move_container_within_tree,
   models::Workspace,
@@ -82,18 +84,7 @@ pub fn move_workspace_in_direction(
       }
     }
 
-    // Get empty workspace to destroy (if one is found). Cannot destroy
-    // empty workspaces if they're the only workspace on the monitor.
-    let workspace_to_destroy =
-      target_monitor.workspaces().into_iter().find(|workspace| {
-        !workspace.config().keep_alive
-          && !workspace.has_children()
-          && !workspace.is_displayed()
-      });
-
-    if let Some(workspace) = workspace_to_destroy {
-      deactivate_workspace(workspace, state)?;
-    }
+    deactivate_empty_dynamic_workspace(state, config)?;
 
     sort_workspaces(&target_monitor, config)?;
 

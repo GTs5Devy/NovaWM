@@ -23,6 +23,7 @@ use crate::{
     WindowContainer, Workspace, WorkspaceTarget,
   },
   pending_sync::PendingSync,
+  persistence::PersistenceState,
   traits::{CommonGetters, PositionGetters, WindowGetters},
   user_config::UserConfig,
 };
@@ -70,6 +71,8 @@ pub struct WmState {
   /// Whether the initial state has been populated.
   has_initialized: bool,
 
+  pub persistence: PersistenceState,
+
   /// Sender for emitting WM-related events.
   event_tx: mpsc::UnboundedSender<WmEvent>,
 
@@ -95,6 +98,7 @@ impl WmState {
       is_paused: false,
       is_focus_synced: false,
       has_initialized: false,
+      persistence: PersistenceState::default(),
       event_tx,
       exit_tx,
     }
@@ -106,6 +110,8 @@ impl WmState {
     &mut self,
     config: &mut UserConfig,
   ) -> anyhow::Result<()> {
+    self.load_persistence(config);
+
     // Get the originally focused window when the WM was started.
     let focused_window = self.dispatcher.focused_window().ok();
 
@@ -162,6 +168,7 @@ impl WmState {
 
     platform_sync(self, config)?;
     self.has_initialized = true;
+    self.save_persistence(config);
 
     Ok(())
   }
@@ -600,6 +607,11 @@ impl WmState {
         warn!("Failed to send event: {}", err);
       }
     }
+  }
+
+  #[cfg(test)]
+  pub fn mark_initialized_for_test(&mut self) {
+    self.has_initialized = true;
   }
 
   /// Starts graceful shutdown via an MSPC channel.

@@ -457,6 +457,10 @@ impl NativeWindow {
     self.inner.process_name()
   }
 
+  pub fn process_path(&self) -> crate::Result<Option<String>> {
+    self.inner.process_path()
+  }
+
   /// Gets a rectangle of the window's size and position.
   ///
   /// # Platform-specific

@@ -63,6 +63,12 @@ impl NativeWindow {
       ))
   }
 
+  /// Implements [`NativeWindow::process_path`].
+  #[allow(clippy::unnecessary_wraps)]
+  pub(crate) fn process_path(&self) -> crate::Result<Option<String>> {
+    Ok(None)
+  }
+
   /// Implements [`NativeWindow::frame`].
   pub(crate) fn frame(&self) -> crate::Result<Rect> {
     // TODO: Consider refactoring this to use a single dispatch.
@@ -314,7 +320,7 @@ impl NativeWindow {
       //   window.
       //
       // Because of these caveats, this method is not exposed as a public
-      // API. It's also the reason why the GlazeWM feature of bringing all
+      // API. It's also the reason why the NovaWM feature of bringing all
       // tiling/floating windows to the front on focus change is not
       // implemented for macOS.
       let result =

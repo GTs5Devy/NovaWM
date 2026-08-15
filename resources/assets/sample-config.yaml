@@ -245,7 +245,7 @@ keybindings:
   - commands: ['close']
     bindings: ['alt+shift+q']
 
-  # Kill GlazeWM process safely.
+  # Exit NovaWM safely.
   - commands: ['wm-exit']
     bindings: ['alt+shift+e']
 

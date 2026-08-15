@@ -19,6 +19,11 @@ pub fn move_window_to_workspace(
   state: &mut WmState,
   config: &UserConfig,
 ) -> anyhow::Result<()> {
+  let requested_workspace_name = match &target {
+    WorkspaceTarget::Name(name) => Some(name.clone()),
+    _ => None,
+  };
+
   let current_workspace = window.workspace().context("No workspace.")?;
   let current_monitor =
     current_workspace.monitor().context("No monitor.")?;
@@ -49,13 +54,26 @@ pub fn move_window_to_workspace(
       return Ok(());
     }
 
+    let target_monitor =
+      target_workspace.monitor().context("No monitor.")?;
+
+    tracing::debug!(
+      hwnd = ?window.native().id(),
+      title = window.native_properties().title,
+      process = window.native_properties().process_name,
+      source_workspace_name = current_workspace.config().name,
+      source_workspace_id = ?current_workspace.id(),
+      source_monitor_id = ?current_monitor.id(),
+      requested_workspace_name,
+      target_workspace_id = ?target_workspace.id(),
+      target_monitor_id = ?target_monitor.id(),
+      "Resolved move --workspace target."
+    );
+
     info!(
       "Moving window to workspace: '{}'.",
       target_workspace.config().name
     );
-
-    let target_monitor =
-      target_workspace.monitor().context("No monitor.")?;
 
     // Since target workspace could be on a different monitor, adjustments
     // might need to be made because of DPI.

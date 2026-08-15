@@ -13,6 +13,7 @@ pub struct ParsedConfig {
   pub gaps: GapsConfig,
   pub general: GeneralConfig,
   pub keybindings: Vec<KeybindingConfig>,
+  pub persistence: PersistenceConfig,
   pub window_behavior: WindowBehaviorConfig,
   pub window_effects: WindowEffectsConfig,
   pub window_rules: Vec<WindowRuleConfig>,
@@ -147,6 +148,24 @@ pub enum HideMethod {
   #[default]
   Cloak,
   PlaceInCorner,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default, rename_all(serialize = "camelCase"))]
+pub struct PersistenceConfig {
+  pub enabled: bool,
+  pub restore_on_startup: bool,
+  pub restore_on_monitor_reconnect: bool,
+}
+
+impl Default for PersistenceConfig {
+  fn default() -> Self {
+    Self {
+      enabled: false,
+      restore_on_startup: true,
+      restore_on_monitor_reconnect: true,
+    }
+  }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

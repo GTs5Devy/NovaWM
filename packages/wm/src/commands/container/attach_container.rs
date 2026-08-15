@@ -38,6 +38,11 @@ pub fn attach_container(
 
   // Resize the child and its siblings if it is a tiling container.
   if let Ok(child) = child.as_tiling_container() {
+    if target_parent.is_stack() {
+      child.set_tiling_size(1.0);
+      return Ok(());
+    }
+
     let tiling_siblings = child.tiling_siblings().collect::<Vec<_>>();
 
     if tiling_siblings.is_empty() {

@@ -111,6 +111,25 @@ pub fn handle_window_moved_or_resized(
       return Ok(());
     }
 
+    // Ignore move/resize events caused by NovaWM hiding or showing a
+    // workspace. These native frames can be transient or stale, and must
+    // not reassign a window to another monitor/workspace.
+    if matches!(
+      window.display_state(),
+      DisplayState::Hiding | DisplayState::Hidden | DisplayState::Showing
+    ) {
+      tracing::debug!(
+        hwnd = ?window.native().id(),
+        title = window.native_properties().title,
+        process = window.native_properties().process_name,
+        display_state = ?window.display_state(),
+        frame = ?frame_position,
+        "Ignoring move/resize event during workspace display transition."
+      );
+
+      return Ok(());
+    }
+
     // Detect whether the window is starting to be interactively moved or
     // resized by the user (e.g. via the window's drag handles).
     let is_drag_start = !state.is_paused && {

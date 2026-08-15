@@ -165,6 +165,20 @@ fn move_to_sibling_container(
         .queue_container_to_redraw(sibling_window)
         .queue_container_to_redraw(window_to_move);
     }
+    TilingContainer::Stack(sibling_stack) => {
+      // Swap the window with the stack tile in the given direction.
+      move_container_within_tree(
+        &window_to_move.clone().into(),
+        &parent,
+        sibling_stack.index(),
+        state,
+      )?;
+
+      state
+        .pending_sync
+        .queue_container_to_redraw(sibling_stack)
+        .queue_container_to_redraw(window_to_move);
+    }
     TilingContainer::Split(sibling_split) => {
       let sibling_descendant =
         sibling_split.descendant_in_direction(&direction.inverse());

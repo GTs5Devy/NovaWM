@@ -12,6 +12,7 @@ use crate::{
     Container, Monitor, NativeWindowProperties, NonTilingWindow,
     TilingWindow, WindowContainer,
   },
+  persistence::WindowRestore,
   traits::{CommonGetters, PositionGetters, WindowGetters},
   user_config::UserConfig,
   wm_state::WmState,
@@ -29,12 +30,20 @@ pub fn manage_window(
     return Ok(());
   };
 
+  let restore =
+    state.persistence_restore_for_window(&native_properties, config);
+  let target_parent = restore
+    .as_ref()
+    .map(|restore| restore.workspace.clone().into())
+    .or(target_parent);
+
   // Create the window instance. This may fail if the window handle has
   // already been destroyed.
   let window = try_warn!(create_window(
     native_window,
     native_properties,
     target_parent,
+    restore,
     state,
     config
   ));
@@ -154,6 +163,7 @@ fn create_window(
   native_window: NativeWindow,
   native_properties: NativeWindowProperties,
   target_parent: Option<Container>,
+  restore: Option<WindowRestore>,
   state: &mut WmState,
   config: &UserConfig,
 ) -> anyhow::Result<WindowContainer> {
@@ -166,8 +176,14 @@ fn create_window(
     .context("No nearest workspace.")?;
 
   let gaps_config = config.value.gaps.clone();
-  let window_state =
-    window_state_to_create(&native_properties, &nearest_monitor, config)?;
+  let window_state = restore
+    .as_ref()
+    .and_then(|restore| restore.state.clone())
+    .unwrap_or(window_state_to_create(
+      &native_properties,
+      &nearest_monitor,
+      config,
+    )?);
 
   // Attach the new window as the first child of the target parent (if
   // provided), otherwise, add as a sibling of the focused container.
@@ -178,6 +194,7 @@ fn create_window(
 
   let target_workspace =
     target_parent.workspace().context("No target workspace.")?;
+  let target_workspace_rect = target_workspace.to_rect()?;
 
   let prefers_centered = config
     .value
@@ -191,13 +208,18 @@ fn create_window(
   // the center of the workspace.
   let is_same_workspace = nearest_workspace.id() == target_workspace.id();
   let floating_placement = {
-    let placement = if !is_same_workspace || prefers_centered {
-      native_properties
-        .frame
-        .translate_to_center(&target_workspace.to_rect()?)
-    } else {
-      native_properties.frame.clone()
-    };
+    let placement = restore
+      .as_ref()
+      .and_then(|restore| restore.floating_placement.clone())
+      .unwrap_or_else(|| {
+        if !is_same_workspace || prefers_centered {
+          native_properties
+            .frame
+            .translate_to_center(&target_workspace_rect)
+        } else {
+          native_properties.frame.clone()
+        }
+      });
 
     // Clamp the window size to be within the workspace's outer gaps. 10px
     // is arbitrary - helps differentiate from tiling windows.
@@ -211,6 +233,9 @@ fn create_window(
   // Window has no border delta unless it's later changed via the
   // `adjust_borders` command.
   let border_delta = RectDelta::zero();
+  let has_custom_floating_placement = restore
+    .as_ref()
+    .is_some_and(|restore| restore.has_custom_floating_placement);
 
   let window_container: WindowContainer = match window_state {
     WindowState::Tiling => TilingWindow::new(
@@ -220,7 +245,7 @@ fn create_window(
       None,
       border_delta,
       floating_placement,
-      false,
+      has_custom_floating_placement,
       gaps_config,
       Vec::new(),
       None,
@@ -235,7 +260,7 @@ fn create_window(
       border_delta,
       None,
       floating_placement,
-      !prefers_centered,
+      has_custom_floating_placement || !prefers_centered,
       Vec::new(),
       None,
     )

@@ -11,13 +11,13 @@ use crate::TilingDirection;
 const VERSION: &str = env!("VERSION_NUMBER");
 
 #[derive(Clone, Debug, Parser)]
-#[clap(name = "glazewm", author, version = VERSION, about, long_about = None)]
+#[clap(name = "novawm", author, version = VERSION, about, long_about = None)]
 pub enum AppCommand {
   /// Starts the window manager.
   Start {
     /// Custom path to user config file.
     ///
-    /// The default path is `%userprofile%/.glzr/glazewm/config.yaml`
+    /// The default path is `%userprofile%/.novawm/config.yaml`
     #[clap(short = 'c', long = "config", value_hint = clap::ValueHint::FilePath)]
     config_path: Option<PathBuf>,
 
@@ -162,6 +162,8 @@ pub enum InvokeCommand {
     #[clap(required = true, allow_hyphen_values = true)]
     workspace: String,
   },
+  FocusNextTab,
+  FocusPrevTab,
   Ignore,
   Move(InvokeMoveCommand),
   MoveWorkspace {
@@ -235,6 +237,7 @@ pub enum InvokeCommand {
   ToggleMinimized,
   ToggleTiling,
   ToggleTilingDirection,
+  Unstack,
   SetTilingDirection {
     #[clap(required = true)]
     tiling_direction: TilingDirection,
@@ -435,4 +438,135 @@ pub struct InvokeUpdateWorkspaceConfig {
 
   #[clap(long)]
   pub keep_alive: Option<bool>,
+}
+
+#[cfg(test)]
+mod tests {
+  use clap::Parser;
+
+  use super::{AppCommand, InvokeCommand};
+
+  fn parse_invoke(command: &str) -> InvokeCommand {
+    InvokeCommand::parse_from(
+      std::iter::once("").chain(command.split_whitespace()),
+    )
+  }
+
+  #[test]
+  fn parses_every_public_invoke_command_family() {
+    let commands = [
+      "adjust-borders --top 1px",
+      "close",
+      "focus --direction left",
+      "focus --container-id 00000000-0000-0000-0000-000000000000",
+      "focus --workspace 1",
+      "focus --monitor 0",
+      "focus --next-active-workspace",
+      "focus --prev-active-workspace",
+      "focus --next-workspace",
+      "focus --prev-workspace",
+      "focus --next-active-workspace-on-monitor",
+      "focus --prev-active-workspace-on-monitor",
+      "focus --recent-workspace",
+      "focus --workspace-in-direction right",
+      "focus-all-workspaces 2",
+      "focus-next-tab",
+      "focus-prev-tab",
+      "ignore",
+      "move --direction left",
+      "move --workspace 2",
+      "move --workspace-in-direction right",
+      "move --next-active-workspace",
+      "move --prev-active-workspace",
+      "move --next-workspace",
+      "move --prev-workspace",
+      "move --next-active-workspace-on-monitor",
+      "move --prev-active-workspace-on-monitor",
+      "move --recent-workspace",
+      "move-workspace --direction right",
+      "position --centered",
+      "position --x-pos 10 --y-pos 20",
+      "resize --width +2%",
+      "resize --height -2%",
+      "update-workspace-config --workspace 1 --name dev",
+      "set-floating --centered",
+      "set-fullscreen --maximized",
+      "set-minimized",
+      "set-tiling",
+      "set-title-bar-visibility hidden",
+      "set-transparency --opacity 95%",
+      "shell-exec cmd",
+      "size --width 800px --height 600px",
+      "toggle-floating --centered",
+      "toggle-fullscreen --maximized",
+      "toggle-minimized",
+      "toggle-tiling",
+      "toggle-tiling-direction",
+      "unstack",
+      "set-tiling-direction vertical",
+      "wm-cycle-focus",
+      "wm-disable-binding-mode --name resize",
+      "wm-enable-binding-mode --name resize",
+      "wm-exit",
+      "wm-redraw",
+      "wm-reload-config",
+      "wm-toggle-pause",
+    ];
+
+    for command in commands {
+      parse_invoke(command);
+    }
+  }
+
+  #[test]
+  fn parses_combined_novawm_workspace_binding_commands() {
+    assert_eq!(
+      parse_invoke("move --workspace 2"),
+      InvokeCommand::Move(super::InvokeMoveCommand {
+        direction: None,
+        workspace_in_direction: None,
+        workspace: Some("2".to_string()),
+        next_active_workspace: false,
+        prev_active_workspace: false,
+        next_workspace: false,
+        prev_workspace: false,
+        next_active_workspace_on_monitor: false,
+        prev_active_workspace_on_monitor: false,
+        recent_workspace: false,
+      })
+    );
+
+    assert_eq!(
+      parse_invoke("focus-all-workspaces 2"),
+      InvokeCommand::FocusAllWorkspaces {
+        workspace: "2".to_string()
+      }
+    );
+  }
+
+  #[test]
+  fn parses_cli_command_forwarding_shapes() {
+    AppCommand::parse_from(["novawm", "query", "windows"]);
+    AppCommand::parse_from(["novawm", "q", "monitors"]);
+    AppCommand::parse_from([
+      "novawm",
+      "command",
+      "focus-all-workspaces",
+      "1",
+    ]);
+    AppCommand::parse_from([
+      "novawm",
+      "command",
+      "--id",
+      "00000000-0000-0000-0000-000000000000",
+      "focus-next-tab",
+    ]);
+    AppCommand::parse_from(["novawm", "sub", "-e", "workspace_updated"]);
+    AppCommand::parse_from([
+      "novawm",
+      "unsub",
+      "--id",
+      "00000000-0000-0000-0000-000000000000",
+    ]);
+  }
 }

@@ -32,18 +32,39 @@ pub struct UserConfig {
 }
 
 impl UserConfig {
+  #[cfg(test)]
+  pub fn mock(config_value: ParsedConfig) -> Self {
+    let window_rules_by_event = Self::window_rules_by_event(&config_value);
+
+    Self {
+      path: PathBuf::new(),
+      value: config_value,
+      value_str: String::new(),
+      window_rules_by_event,
+    }
+  }
+
   /// Creates an instance of `UserConfig`. Reads and validates the user
   /// config from the given path.
   ///
   /// Creates a new config file from sample if it doesn't exist.
   pub fn new(config_path: Option<PathBuf>) -> anyhow::Result<Self> {
-    let default_config_path = home::home_dir()
+    let home_dir = home::home_dir()
       .context("Unable to get home directory.")?
-      .join(".glzr/glazewm/config.yaml");
+      .to_path_buf();
+    let default_config_path = home_dir.join(".novawm/config.yaml");
 
     let config_path = config_path
+      .or_else(|| env::var("NOVAWM_CONFIG_PATH").ok().map(PathBuf::from))
       .or_else(|| env::var("GLAZEWM_CONFIG_PATH").ok().map(PathBuf::from))
       .unwrap_or(default_config_path);
+
+    if !config_path.exists() {
+      let old_path = home_dir.join(".glzr/glazewm/config.yaml");
+      if old_path.exists() {
+        Self::copy_old_config(&old_path, &config_path)?;
+      }
+    }
 
     let (config_value, config_str) = Self::read(&config_path)?;
 
@@ -88,6 +109,27 @@ impl UserConfig {
 
     fs::write(config_path, SAMPLE_CONFIG).with_context(|| {
       format!("Unable to write to {}.", config_path.display())
+    })?;
+
+    Ok(())
+  }
+
+  fn copy_old_config(
+    old_path: &PathBuf,
+    new_path: &PathBuf,
+  ) -> Result<()> {
+    let parent_dir = new_path.parent().context("Invalid config path.")?;
+
+    fs::create_dir_all(parent_dir).with_context(|| {
+      format!("Unable to create directory {}.", &new_path.display())
+    })?;
+
+    fs::copy(old_path, new_path).with_context(|| {
+      format!(
+        "Unable to import config from {} to {}.",
+        old_path.display(),
+        new_path.display()
+      )
     })?;
 
     Ok(())
@@ -387,5 +429,52 @@ impl UserConfig {
         true
       }
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use wm_common::ParsedConfig;
+
+  #[test]
+  fn sample_config_parses() -> anyhow::Result<()> {
+    let _config: ParsedConfig = serde_yaml::from_str(include_str!(
+      "../../../resources/assets/sample-config.yaml"
+    ))?;
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_config_parses_novawm_commands() -> anyhow::Result<()> {
+    let config: ParsedConfig = serde_yaml::from_str(include_str!(
+      "../../../resources/test-config.yaml"
+    ))?;
+
+    let commands = config
+      .keybindings
+      .iter()
+      .flat_map(|keybinding| keybinding.commands.iter())
+      .collect::<Vec<_>>();
+
+    assert!(commands.iter().any(|command| matches!(
+      command,
+      wm_common::InvokeCommand::FocusAllWorkspaces { workspace }
+        if workspace == "1"
+    )));
+    assert!(commands.iter().any(|command| matches!(
+      command,
+      wm_common::InvokeCommand::FocusNextTab
+    )));
+    assert!(commands.iter().any(|command| matches!(
+      command,
+      wm_common::InvokeCommand::FocusPrevTab
+    )));
+    assert!(commands.iter().any(|command| matches!(
+      command,
+      wm_common::InvokeCommand::Unstack
+    )));
+
+    Ok(())
   }
 }

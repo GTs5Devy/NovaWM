@@ -266,10 +266,13 @@ fn redraw_containers(
       continue;
     }
 
+    let should_display =
+      workspace.is_displayed() && is_selected_in_stack(window);
+
     // Transition display state depending on whether window will be
     // shown or hidden.
     window.set_display_state(
-      match (window.display_state(), workspace.is_displayed()) {
+      match (window.display_state(), should_display) {
         (DisplayState::Hidden | DisplayState::Hiding, true) => {
           DisplayState::Showing
         }
@@ -280,9 +283,28 @@ fn redraw_containers(
       },
     );
 
-    let is_visible = matches!(
-      window.display_state(),
-      DisplayState::Showing | DisplayState::Shown
+    let is_visible = should_display
+      && matches!(
+        window.display_state(),
+        DisplayState::Showing | DisplayState::Shown
+      );
+
+    let target_rect = window
+      .to_rect()?
+      .apply_delta(&window.total_border_delta()?, None);
+
+    tracing::debug!(
+      hwnd = ?window.native().id(),
+      title = window.native_properties().title,
+      process = window.native_properties().process_name,
+      workspace_name = workspace.config().name,
+      workspace_id = ?workspace.id(),
+      workspace_monitor_id = ?workspace.monitor().map(|monitor| monitor.id()),
+      window_rect_before = ?window.native_properties().frame,
+      target_redraw_rect = ?target_rect,
+      is_visible,
+      display_state = ?window.display_state(),
+      "Redrawing managed window during workspace sync."
     );
 
     if let Err(err) =
@@ -469,6 +491,13 @@ fn reposition_window(
   }
 
   Ok(())
+}
+
+fn is_selected_in_stack(window: &WindowContainer) -> bool {
+  window
+    .self_and_ancestors()
+    .filter_map(|ancestor| ancestor.as_stack().cloned())
+    .all(|stack| stack.contains_selected_child(window))
 }
 
 fn jump_cursor(

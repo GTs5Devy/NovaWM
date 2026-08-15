@@ -14,7 +14,7 @@ use windows::{
 
 /// Arbitrary GUID to uniquely identify the application.
 const APP_GUID: PCWSTR =
-  w!("Global\\325d0ed7-7f60-4925-8d1b-aa287b26b218");
+  w!("Global\\5ebc4d63-d2d8-4dda-93fb-0ac753e33ff1");
 
 /// Platform-specific implementation of [`SingleInstance`].
 pub struct SingleInstance {

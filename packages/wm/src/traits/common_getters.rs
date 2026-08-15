@@ -143,6 +143,13 @@ pub trait CommonGetters {
           return Some(current);
         }
 
+        if let Container::Stack(stack_container) = &current {
+          if let Some(selected_child) = stack_container.selected_child() {
+            stack.push(selected_child);
+          }
+          continue;
+        }
+
         // Reverse the child focus order so that the first element is
         // pushed last and popped first.
         for focus_child_id in

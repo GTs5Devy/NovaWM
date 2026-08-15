@@ -83,6 +83,23 @@ impl NativeWindow {
 
   /// Implements [`NativeWindow::process_name`].
   pub(crate) fn process_name(&self) -> crate::Result<String> {
+    let exe_path = self.process_path()?.ok_or_else(|| {
+      crate::Error::Platform("Failed to query process path.".to_string())
+    })?;
+
+    exe_path
+      .split('\\')
+      .next_back()
+      .map(|file_name| {
+        file_name.split('.').next().unwrap_or(file_name).to_string()
+      })
+      .ok_or_else(|| {
+        crate::Error::Platform("Failed to parse process name.".to_string())
+      })
+  }
+
+  /// Implements [`NativeWindow::process_path`].
+  pub(crate) fn process_path(&self) -> crate::Result<Option<String>> {
     let mut process_id = 0u32;
     unsafe {
       GetWindowThreadProcessId(self.hwnd(), Some(&raw mut process_id));
@@ -92,7 +109,7 @@ impl NativeWindow {
       OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id)
     }?;
 
-    let mut buffer = [0u16; 256];
+    let mut buffer = [0u16; 1024];
     let mut length = u32::try_from(buffer.len())?;
 
     unsafe {
@@ -109,17 +126,7 @@ impl NativeWindow {
       query_res
     }?;
 
-    let exe_path = String::from_utf16_lossy(&buffer[..length as usize]);
-
-    exe_path
-      .split('\\')
-      .next_back()
-      .map(|file_name| {
-        file_name.split('.').next().unwrap_or(file_name).to_string()
-      })
-      .ok_or_else(|| {
-        crate::Error::Platform("Failed to parse process name.".to_string())
-      })
+    Ok(Some(String::from_utf16_lossy(&buffer[..length as usize])))
   }
 
   /// Implements [`NativeWindow::frame`].

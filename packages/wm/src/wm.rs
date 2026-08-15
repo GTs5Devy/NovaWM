@@ -17,8 +17,9 @@ use wm_platform::{
 use crate::{
   commands::{
     container::{
-      focus_container_by_id, focus_in_direction, set_tiling_direction,
-      toggle_tiling_direction,
+      focus_container_by_id, focus_in_direction, focus_tab,
+      set_tiling_direction, toggle_tiling_direction, unstack,
+      TabDirection,
     },
     general::{
       cycle_focus, disable_binding_mode, enable_binding_mode,
@@ -97,6 +98,12 @@ impl WindowManager {
           .map(|kb_config| kb_config.commands.clone());
 
         if let Some(commands) = commands {
+          tracing::debug!(
+            keybinding = ?keybinding_event.0,
+            commands = ?commands,
+            "Received matching keybinding."
+          );
+
           self.process_commands(&commands, None, config)?;
         }
 
@@ -138,7 +145,7 @@ impl WindowManager {
           handle_window_title_changed(&window, state, config)
         }
         WindowEvent::Destroyed { window_id, .. } => {
-          handle_window_destroyed(window_id, state)
+          handle_window_destroyed(window_id, state, config)
         }
       },
     }?;
@@ -146,6 +153,8 @@ impl WindowManager {
     if !state.is_paused && state.pending_sync.has_changes() {
       platform_sync(state, config)?;
     }
+
+    state.save_persistence(config);
 
     Ok(())
   }
@@ -178,6 +187,8 @@ impl WindowManager {
     if state.pending_sync.has_changes() {
       platform_sync(state, config)?;
     }
+
+    state.save_persistence(config);
 
     Ok(new_subject_container_id)
   }
@@ -332,6 +343,12 @@ impl WindowManager {
       }
       InvokeCommand::FocusAllWorkspaces { workspace } => {
         focus_all_workspaces(workspace, state, config)
+      }
+      InvokeCommand::FocusNextTab => {
+        focus_tab(&subject_container, TabDirection::Next, state)
+      }
+      InvokeCommand::FocusPrevTab => {
+        focus_tab(&subject_container, TabDirection::Previous, state)
       }
       InvokeCommand::Ignore => {
         match subject_container.as_window_container() {
@@ -742,6 +759,7 @@ impl WindowManager {
       InvokeCommand::ToggleTilingDirection => {
         toggle_tiling_direction(subject_container, state, config)
       }
+      InvokeCommand::Unstack => unstack(&subject_container, state),
       InvokeCommand::SetTilingDirection { tiling_direction } => {
         set_tiling_direction(
           subject_container,
@@ -818,5 +836,7 @@ impl WindowManager {
         tracing::warn!("{:?}", err);
       }
     }
+
+    self.state.save_persistence_sync(config);
   }
 }

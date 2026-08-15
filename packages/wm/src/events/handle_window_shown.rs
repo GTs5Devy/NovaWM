@@ -3,8 +3,10 @@ use wm_common::{DisplayState, HideMethod};
 use wm_platform::NativeWindow;
 
 use crate::{
-  commands::window::manage_window, traits::WindowGetters,
-  user_config::UserConfig, wm_state::WmState,
+  commands::window::manage_window,
+  traits::{CommonGetters, WindowGetters},
+  user_config::UserConfig,
+  wm_state::WmState,
 };
 
 pub fn handle_window_shown(
@@ -21,6 +23,17 @@ pub fn handle_window_shown(
     if config.value.general.hide_method != HideMethod::PlaceInCorner
       && window.display_state() == DisplayState::Showing
     {
+      tracing::debug!(
+        hwnd = ?window.native().id(),
+        title = window.native_properties().title,
+        process = window.native_properties().process_name,
+        workspace_name = window.workspace().map(|workspace| workspace.config().name),
+        workspace_id = ?window.workspace().map(|workspace| workspace.id()),
+        workspace_monitor_id = ?window.monitor().map(|monitor| monitor.id()),
+        window_rect_after_show = ?window.native_properties().frame,
+        "Window shown after workspace switch."
+      );
+
       window.set_display_state(DisplayState::Shown);
     } else {
       state.pending_sync.queue_container_to_redraw(window);

@@ -8,6 +8,7 @@ pub struct NativeWindowProperties {
   #[cfg(target_os = "windows")]
   pub class_name: String,
   pub process_name: String,
+  pub process_path: Option<String>,
   pub frame: Rect,
   pub is_minimized: bool,
   pub is_maximized: bool,
@@ -25,6 +26,7 @@ impl TryFrom<&NativeWindow> for NativeWindowProperties {
       #[cfg(target_os = "windows")]
       class_name: native_window.class_name()?,
       process_name: native_window.process_name()?,
+      process_path: native_window.process_path()?,
       frame: native_window.frame()?,
       is_minimized: native_window.is_minimized()?,
       is_maximized: native_window.is_maximized()?,

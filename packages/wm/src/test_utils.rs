@@ -14,8 +14,8 @@ use crate::{
   commands::container::attach_container,
   models::{
     Monitor, NativeMonitorProperties, NativeWindowProperties,
-    NonTilingWindow, SplitContainer, TilingContainer, TilingWindow,
-    Workspace,
+    NonTilingWindow, SplitContainer, StackContainer, TilingContainer,
+    TilingWindow, Workspace,
   },
   traits::TilingSizeGetters,
 };
@@ -114,6 +114,7 @@ impl NativeWindowProperties {
   pub fn mock(
     #[builder(default = String::new())] title: String,
     #[builder(default = String::new())] process_name: String,
+    process_path: Option<String>,
     #[builder(default = mock_window_rect())] frame: Rect,
     #[builder(default = false)] is_minimized: bool,
     #[builder(default = false)] is_maximized: bool,
@@ -122,6 +123,7 @@ impl NativeWindowProperties {
     Self {
       title,
       process_name,
+      process_path,
       frame,
       is_minimized,
       is_maximized,
@@ -140,6 +142,7 @@ impl NonTilingWindow {
   pub fn mock(
     #[builder(default = String::new())] title: String,
     #[builder(default = String::new())] process_name: String,
+    process_path: Option<String>,
     #[builder(default = mock_window_rect())] floating_placement: Rect,
     #[builder(default = WindowState::Floating(FloatingStateConfig::default()))]
     state: WindowState,
@@ -148,6 +151,7 @@ impl NonTilingWindow {
     let properties = NativeWindowProperties::mock()
       .title(title)
       .process_name(process_name)
+      .maybe_process_path(process_path)
       .frame(floating_placement.clone())
       .call();
 
@@ -189,12 +193,31 @@ impl SplitContainer {
 }
 
 #[bon]
+impl StackContainer {
+  #[builder]
+  pub fn mock(
+    #[builder(default = GapsConfig::default())] gaps_config: GapsConfig,
+    #[builder(default = vec![])] tiling_containers: Vec<TilingContainer>,
+  ) -> Self {
+    let stack = Self::new(gaps_config);
+
+    for child in tiling_containers {
+      attach_container(&child.into(), &stack.clone().into(), None)
+        .unwrap();
+    }
+
+    stack
+  }
+}
+
+#[bon]
 impl TilingWindow {
   #[builder]
   pub fn mock(
     #[builder(default = 1.0)] tiling_size: f32,
     #[builder(default = String::new())] title: String,
     #[builder(default = String::new())] process_name: String,
+    process_path: Option<String>,
     #[builder(default = mock_window_rect())] floating_placement: Rect,
     #[builder(default = GapsConfig::default())] gaps_config: GapsConfig,
     #[builder(default = NativeWindow::mock())] native: NativeWindow,
@@ -202,6 +225,7 @@ impl TilingWindow {
     let properties = NativeWindowProperties::mock()
       .title(title)
       .process_name(process_name)
+      .maybe_process_path(process_path)
       .frame(floating_placement.clone())
       .call();
 

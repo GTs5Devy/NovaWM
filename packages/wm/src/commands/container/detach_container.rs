@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use super::flatten_split_container;
+use super::{collapse_stack_container, flatten_split_container};
 use crate::{
   models::Container,
   traits::{CommonGetters, TilingSizeGetters, MIN_TILING_SIZE},
@@ -12,6 +12,10 @@ use crate::{
 /// fill the freed up space. Will flatten empty parent split containers.
 #[allow(clippy::needless_pass_by_value)]
 pub fn detach_container(child_to_remove: Container) -> anyhow::Result<()> {
+  let stack_parent = child_to_remove
+    .parent()
+    .and_then(|parent| parent.as_stack().cloned());
+
   // Flatten the parent split container if it'll be empty after removing
   // the child.
   if let Some(split_parent) = child_to_remove
@@ -37,6 +41,11 @@ pub fn detach_container(child_to_remove: Container) -> anyhow::Result<()> {
 
   // Resize the siblings if it is a tiling container.
   if let Ok(child_to_remove) = child_to_remove.as_tiling_container() {
+    if let Some(stack_parent) = stack_parent {
+      collapse_stack_container(stack_parent)?;
+      return Ok(());
+    }
+
     let tiling_siblings = parent.tiling_children().collect::<Vec<_>>();
 
     // TODO: Share logic with `resize_tiling_container`.

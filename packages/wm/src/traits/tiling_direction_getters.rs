@@ -27,6 +27,9 @@ pub trait TilingDirectionGetters: CommonGetters {
       TilingContainer::Split(split_child) => {
         split_child.descendant_in_direction(direction)
       }
+      TilingContainer::Stack(stack_child) => stack_child
+        .selected_child()
+        .and_then(|child| child.as_tiling_window().cloned()),
       TilingContainer::TilingWindow(window) => Some(window),
     }
   }

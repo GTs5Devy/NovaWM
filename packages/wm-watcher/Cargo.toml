@@ -1,10 +1,10 @@
 [package]
 name = "wm-watcher"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "glazewm-watcher"
+name = "novawm-watcher"
 path = "src/main.rs"
 
 [build-dependencies]

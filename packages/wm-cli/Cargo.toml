@@ -1,13 +1,13 @@
 [package]
 name = "wm-cli"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 [lib]
 path = "src/lib.rs"
 
 [[bin]]
-name = "glazewm-cli"
+name = "novawm-cli"
 path = "src/main.rs"
 
 [build-dependencies]

@@ -12,6 +12,11 @@ general:
   hide_method: 'hide'
   show_all_in_taskbar: false
 
+persistence:
+  enabled: true
+  restore_on_startup: true
+  restore_on_monitor_reconnect: true
+
 workspaces:
   - name: '1'
   - name: '2'
@@ -30,3 +35,24 @@ keybindings:
 
   - commands: ['focus-all-workspaces 4']
     bindings: ['alt+4']
+
+  - commands: ['move --workspace 1', 'focus-all-workspaces 1']
+    bindings: ['alt+shift+1']
+
+  - commands: ['move --workspace 2', 'focus-all-workspaces 2']
+    bindings: ['alt+shift+2']
+
+  - commands: ['move --workspace 3', 'focus-all-workspaces 3']
+    bindings: ['alt+shift+3']
+
+  - commands: ['move --workspace 4', 'focus-all-workspaces 4']
+    bindings: ['alt+shift+4']
+
+  - commands: ['focus-next-tab']
+    bindings: ['alt+oem_close_brackets']
+
+  - commands: ['focus-prev-tab']
+    bindings: ['alt+oem_open_brackets']
+
+  - commands: ['unstack']
+    bindings: ['alt+shift+s']

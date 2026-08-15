@@ -1,4 +1,4 @@
-use tracing::info;
+use tracing::{debug, info};
 use wm_common::WmEvent;
 
 use crate::{
@@ -13,6 +13,16 @@ pub fn deactivate_workspace(
   workspace: Workspace,
   state: &WmState,
 ) -> anyhow::Result<()> {
+  debug!(
+    monitor = ?workspace.monitor().map(|monitor| monitor.id()),
+    workspace_name = workspace.config().name,
+    workspace_id = ?workspace.id(),
+    is_displayed = workspace.is_displayed(),
+    child_count = workspace.child_count(),
+    keep_alive = workspace.config().keep_alive,
+    "Calling deactivate_workspace."
+  );
+
   info!("Deactivating workspace: {workspace}");
 
   detach_container(workspace.clone().into())?;

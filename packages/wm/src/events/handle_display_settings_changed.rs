@@ -81,6 +81,8 @@ pub fn handle_display_settings_changed(
     ensure_workspaces_for_monitor(&new_monitor, state, config)?;
   }
 
+  state.restore_persisted_windows_on_monitor_reconnect(config)?;
+
   for window in state.windows() {
     // Display setting changes can spread windows out sporadically, so mark
     // all windows as needing a DPI adjustment (just in case).
