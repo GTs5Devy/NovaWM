@@ -64,8 +64,35 @@ monitor's own windows and layout.
 
 ## Installation
 
-NovaWM v0.1.0 is source/build oriented. No installer is published in this repo
-yet.
+Download the latest Windows build from
+[GitHub Releases](https://github.com/GTs5Devy/NovaWM/releases), extract the
+ZIP, and run NovaWM.
+
+Start NovaWM from the extracted folder:
+
+```powershell
+.\novawm.exe start --config=".\config.yaml"
+```
+
+Exit safely:
+
+```powershell
+.\novawm-cli.exe command wm-exit
+```
+
+The release ZIP includes:
+
+```text
+novawm.exe
+novawm-cli.exe
+novawm-watcher.exe
+config.yaml
+LICENSE.md
+NOTICE.md
+README.md
+```
+
+## Building From Source
 
 Requirements:
 
@@ -89,10 +116,10 @@ target\release\novawm-cli.exe
 target\release\novawm-watcher.exe
 ```
 
-Start with the included test config:
+Start a source build with the included sample config:
 
 ```powershell
-.\target\release\novawm.exe start --config=".\resources\test-config.yaml"
+.\target\release\novawm.exe start --config=".\resources\assets\sample-config.yaml"
 ```
 
 Exit safely:

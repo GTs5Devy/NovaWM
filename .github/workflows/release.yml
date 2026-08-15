@@ -1,0 +1,84 @@
+name: NovaWM Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-windows-x64:
+    name: Release Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart("v")
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "asset_name=NovaWM-$tag-windows-x64.zip" >> $env:GITHUB_OUTPUT
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache Rust build output
+        uses: swatinem/rust-cache@v2
+        with:
+          shared-key: windows-x64-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build release binaries
+        env:
+          VERSION_NUMBER: ${{ steps.version.outputs.version }}
+        run: cargo build --release --workspace
+
+      - name: Create release directory
+        shell: pwsh
+        run: |
+          $releaseDir = "dist\NovaWM-${{ steps.version.outputs.tag }}-windows-x64"
+          New-Item -ItemType Directory -Force -Path $releaseDir
+
+          Copy-Item "target\release\novawm.exe" "$releaseDir\novawm.exe"
+          Copy-Item "target\release\novawm-cli.exe" "$releaseDir\novawm-cli.exe"
+          Copy-Item "target\release\novawm-watcher.exe" "$releaseDir\novawm-watcher.exe"
+          Copy-Item "resources\assets\sample-config.yaml" "$releaseDir\config.yaml"
+          Copy-Item "LICENSE.md" "$releaseDir\LICENSE.md"
+          Copy-Item "NOTICE.md" "$releaseDir\NOTICE.md"
+          Copy-Item "README.md" "$releaseDir\README.md"
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          $assetName = "${{ steps.version.outputs.asset_name }}"
+          Compress-Archive `
+            -Path "dist\NovaWM-${{ steps.version.outputs.tag }}-windows-x64\*" `
+            -DestinationPath "dist\$assetName" `
+            -Force
+
+      - name: Create SHA-256 checksum
+        shell: pwsh
+        run: |
+          $assetName = "${{ steps.version.outputs.asset_name }}"
+          $hash = (Get-FileHash "dist\$assetName" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $assetName" | Out-File "dist\$assetName.sha256" -Encoding ascii
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NovaWM ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/${{ steps.version.outputs.asset_name }}
+            dist/${{ steps.version.outputs.asset_name }}.sha256
