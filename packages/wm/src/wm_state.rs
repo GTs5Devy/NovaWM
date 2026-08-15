@@ -338,6 +338,7 @@ impl WmState {
       .find(|window| &*window.native() == native_window)
   }
 
+  #[allow(clippy::unused_self)]
   pub fn workspace_by_name_in_monitor(
     &self,
     monitor: &Monitor,

@@ -13,6 +13,7 @@ use crate::{
   wm_state::WmState,
 };
 
+#[allow(clippy::too_many_lines)]
 pub fn move_window_to_workspace(
   window: WindowContainer,
   target: WorkspaceTarget,

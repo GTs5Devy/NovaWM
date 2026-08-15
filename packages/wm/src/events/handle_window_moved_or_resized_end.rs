@@ -230,8 +230,8 @@ fn drop_into_tiling_tree(
     .filter_map(|container| container.as_tiling_container().ok())
     .try_fold(None, |acc: Option<TilingContainer>, container| match acc {
       Some(acc) => {
-        let is_nearer = acc.to_rect()?.distance_to_point(&mouse_pos)
-          < container.to_rect()?.distance_to_point(&mouse_pos);
+        let is_nearer = acc.to_rect()?.distance_to_point(mouse_pos)
+          < container.to_rect()?.distance_to_point(mouse_pos);
 
         anyhow::Ok(Some(if is_nearer { acc } else { container }))
       }
@@ -281,7 +281,7 @@ fn drop_into_tiling_tree(
       wrap_in_split_container(
         &split_container,
         &target_parent.clone().into(),
-        &[nearest_container.clone()],
+        std::slice::from_ref(&nearest_container),
       )?;
 
       let target_index = usize::from(!is_before);
@@ -365,6 +365,7 @@ impl DropZone {
 const CENTER_DROP_ZONE_RATIO: f64 = 0.4;
 
 /// Gets the drop zone for a window based on the mouse position.
+#[allow(clippy::cast_possible_truncation)]
 fn drop_zone(mouse_pos: &Point, rect: &Rect) -> DropZone {
   let center_width = f64::from(rect.width()) * CENTER_DROP_ZONE_RATIO;
   let center_height = f64::from(rect.height()) * CENTER_DROP_ZONE_RATIO;
@@ -481,6 +482,7 @@ mod tests {
     NonTilingWindow::mock().title(title.to_string()).call()
   }
 
+  #[allow(clippy::needless_pass_by_value)]
   fn drop_window(
     moved: &NonTilingWindow,
     mouse_workspace: DirectionContainer,

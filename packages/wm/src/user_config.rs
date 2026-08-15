@@ -51,7 +51,7 @@ impl UserConfig {
   pub fn new(config_path: Option<PathBuf>) -> anyhow::Result<Self> {
     let home_dir = home::home_dir()
       .context("Unable to get home directory.")?
-      .to_path_buf();
+      .clone();
     let default_config_path = home_dir.join(".novawm/config.yaml");
 
     let config_path = config_path
@@ -104,7 +104,7 @@ impl UserConfig {
       config_path.parent().context("Invalid config path.")?;
 
     fs::create_dir_all(parent_dir).with_context(|| {
-      format!("Unable to create directory {}.", &config_path.display())
+      format!("Unable to create directory {}.", config_path.display())
     })?;
 
     fs::write(config_path, SAMPLE_CONFIG).with_context(|| {
@@ -121,7 +121,7 @@ impl UserConfig {
     let parent_dir = new_path.parent().context("Invalid config path.")?;
 
     fs::create_dir_all(parent_dir).with_context(|| {
-      format!("Unable to create directory {}.", &new_path.display())
+      format!("Unable to create directory {}.", new_path.display())
     })?;
 
     fs::copy(old_path, new_path).with_context(|| {

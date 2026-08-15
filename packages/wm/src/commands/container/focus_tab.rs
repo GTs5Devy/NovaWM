@@ -7,6 +7,7 @@ use crate::{
   wm_state::WmState,
 };
 
+#[derive(Clone, Copy)]
 pub enum TabDirection {
   Next,
   Previous,

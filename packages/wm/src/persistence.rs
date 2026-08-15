@@ -99,7 +99,7 @@ impl WmState {
         self.persistence.used_entries.clear();
       }
       Err(err) => {
-        tracing::warn!("Failed to load persistence state: {err}")
+        tracing::warn!("Failed to load persistence state: {err}");
       }
     }
   }
@@ -272,9 +272,7 @@ impl WmState {
       return Some(workspace);
     }
 
-    if config.workspace_config_by_name(workspace_name).is_none() {
-      return None;
-    }
+    config.workspace_config_by_name(workspace_name)?;
 
     if let Err(err) = activate_workspace(
       Some(workspace_name),

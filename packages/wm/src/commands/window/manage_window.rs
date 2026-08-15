@@ -43,7 +43,7 @@ pub fn manage_window(
     native_window,
     native_properties,
     target_parent,
-    restore,
+    restore.as_ref(),
     state,
     config
   ));
@@ -163,7 +163,7 @@ fn create_window(
   native_window: NativeWindow,
   native_properties: NativeWindowProperties,
   target_parent: Option<Container>,
-  restore: Option<WindowRestore>,
+  restore: Option<&WindowRestore>,
   state: &mut WmState,
   config: &UserConfig,
 ) -> anyhow::Result<WindowContainer> {
@@ -177,7 +177,6 @@ fn create_window(
 
   let gaps_config = config.value.gaps.clone();
   let window_state = restore
-    .as_ref()
     .and_then(|restore| restore.state.clone())
     .unwrap_or(window_state_to_create(
       &native_properties,
@@ -209,7 +208,6 @@ fn create_window(
   let is_same_workspace = nearest_workspace.id() == target_workspace.id();
   let floating_placement = {
     let placement = restore
-      .as_ref()
       .and_then(|restore| restore.floating_placement.clone())
       .unwrap_or_else(|| {
         if !is_same_workspace || prefers_centered {
@@ -233,9 +231,8 @@ fn create_window(
   // Window has no border delta unless it's later changed via the
   // `adjust_borders` command.
   let border_delta = RectDelta::zero();
-  let has_custom_floating_placement = restore
-    .as_ref()
-    .is_some_and(|restore| restore.has_custom_floating_placement);
+  let has_custom_floating_placement =
+    restore.is_some_and(|restore| restore.has_custom_floating_placement);
 
   let window_container: WindowContainer = match window_state {
     WindowState::Tiling => TilingWindow::new(

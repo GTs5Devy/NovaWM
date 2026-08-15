@@ -191,7 +191,7 @@ pub fn focus_all_workspaces(
     .workspaces()
     .into_iter()
     .find(|workspace| workspace.config().name == workspace_name)
-    .filter(|workspace| workspace.is_displayed())
+    .filter(crate::models::Workspace::is_displayed)
     .map(|workspace| {
       let focused_descendant = workspace.descendant_focus_order().next();
       focused_descendant.unwrap_or_else(|| workspace.into())

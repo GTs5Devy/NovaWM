@@ -7,6 +7,7 @@ use crate::{
   traits::{CommonGetters, TilingSizeGetters},
 };
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn collapse_stack_container(
   stack_container: StackContainer,
 ) -> anyhow::Result<()> {
