@@ -6,9 +6,7 @@ use wm_platform::NativeWindow;
 use crate::{
   commands::{
     container::set_focused_descendant, window::run_window_rules,
-    workspace::focus_workspace,
   },
-  models::WorkspaceTarget,
   traits::{CommonGetters, WindowGetters},
   user_config::UserConfig,
   wm_state::WmState,
@@ -74,11 +72,19 @@ pub fn handle_window_focused(
     if window.display_state() == DisplayState::Hidden {
       info!("Focusing off-screen window: {window}");
 
-      focus_workspace(
-        WorkspaceTarget::Name(workspace.config().name),
-        state,
-        config,
-      )?;
+      let displayed_workspace = workspace
+        .monitor()
+        .and_then(|monitor| monitor.displayed_workspace())
+        .context("No workspace is currently displayed.")?;
+
+      set_focused_descendant(&window.clone().into(), None);
+
+      state
+        .pending_sync
+        .queue_focus_change()
+        .queue_container_to_redraw(displayed_workspace)
+        .queue_container_to_redraw(workspace.clone())
+        .queue_cursor_jump();
     }
 
     // Update the WM's focus state.

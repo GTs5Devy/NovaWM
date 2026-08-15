@@ -22,6 +22,19 @@ pub fn move_workspace_in_direction(
     state.monitor_in_direction(&origin_monitor, direction)?;
 
   if let Some(target_monitor) = target_monitor {
+    if target_monitor
+      .workspaces()
+      .into_iter()
+      .any(|target_workspace| {
+        target_workspace.config().name == workspace.config().name
+      })
+    {
+      anyhow::bail!(
+        "Target monitor already has workspace '{}'.",
+        workspace.config().name
+      );
+    }
+
     // Get currently displayed workspace on the target monitor.
     let displayed_workspace = target_monitor
       .displayed_workspace()

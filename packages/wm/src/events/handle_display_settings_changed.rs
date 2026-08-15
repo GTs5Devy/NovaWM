@@ -3,7 +3,7 @@ use wm_common::try_warn;
 
 use crate::{
   commands::monitor::{
-    add_monitor, move_bounded_workspaces_to_new_monitor, remove_monitor,
+    add_monitor, ensure_workspaces_for_monitor, remove_monitor,
     sort_monitors, update_monitor,
   },
   models::{Monitor, NativeMonitorProperties},
@@ -78,7 +78,7 @@ pub fn handle_display_settings_changed(
   sort_monitors(&state.root_container)?;
 
   for new_monitor in new_monitors {
-    move_bounded_workspaces_to_new_monitor(&new_monitor, state, config)?;
+    ensure_workspaces_for_monitor(&new_monitor, state, config)?;
   }
 
   for window in state.windows() {

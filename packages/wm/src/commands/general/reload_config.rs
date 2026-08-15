@@ -112,8 +112,8 @@ fn update_workspace_configs(
         // workspace has been removed. So, we reassign the first suitable
         // workspace config to the workspace.
         config
-          .workspace_config_for_monitor(&monitor, &workspaces)
-          .or_else(|| config.next_inactive_workspace_config(&workspaces))
+          .workspace_config_for_monitor(&monitor)
+          .or_else(|| config.next_inactive_workspace_config(&monitor))
       });
 
     match workspace_config {

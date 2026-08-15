@@ -34,19 +34,39 @@ pub fn remove_monitor(
     });
 
   for workspace in workspaces_to_move {
-    // Move workspace to target monitor.
-    move_container_within_tree(
-      &workspace.clone().into(),
-      &target_monitor.clone().into(),
-      target_monitor.child_count(),
-      state,
-    )?;
+    if let Some(existing_workspace) = state.workspace_by_name_in_monitor(
+      &target_monitor,
+      &workspace.config().name,
+    ) {
+      for child in workspace.children() {
+        move_container_within_tree(
+          &child,
+          &existing_workspace.clone().into(),
+          existing_workspace.child_count(),
+          state,
+        )?;
+      }
+
+      detach_container(workspace.clone().into())?;
+
+      state.emit_event(WmEvent::WorkspaceUpdated {
+        updated_workspace: existing_workspace.to_dto()?,
+      });
+    } else {
+      // Move workspace to target monitor.
+      move_container_within_tree(
+        &workspace.clone().into(),
+        &target_monitor.clone().into(),
+        target_monitor.child_count(),
+        state,
+      )?;
+
+      state.emit_event(WmEvent::WorkspaceUpdated {
+        updated_workspace: workspace.to_dto()?,
+      });
+    }
 
     sort_workspaces(&target_monitor, config)?;
-
-    state.emit_event(WmEvent::WorkspaceUpdated {
-      updated_workspace: workspace.to_dto()?,
-    });
   }
 
   detach_container(monitor.clone().into())?;

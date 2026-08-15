@@ -1,7 +1,7 @@
 use anyhow::Context;
 
 use crate::{
-  commands::workspace::focus_workspace, models::WorkspaceTarget,
+  commands::container::set_focused_descendant, traits::CommonGetters,
   user_config::UserConfig, wm_state::WmState,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 pub fn focus_monitor(
   monitor_index: usize,
   state: &mut WmState,
-  config: &UserConfig,
+  _config: &UserConfig,
 ) -> anyhow::Result<()> {
   let monitors = state.monitors();
 
@@ -17,10 +17,16 @@ pub fn focus_monitor(
     format!("Monitor at index {monitor_index} was not found.")
   })?;
 
-  let workspace_name = target_monitor
+  let workspace = target_monitor
     .displayed_workspace()
-    .map(|workspace| workspace.config().name)
-    .context("Failed to get target workspace name.")?;
+    .context("Failed to get target workspace.")?;
 
-  focus_workspace(WorkspaceTarget::Name(workspace_name), state, config)
+  let focused_descendant = workspace.descendant_focus_order().next();
+  let container_to_focus =
+    focused_descendant.unwrap_or_else(|| workspace.into());
+
+  set_focused_descendant(&container_to_focus, None);
+  state.pending_sync.queue_focus_change().queue_cursor_jump();
+
+  Ok(())
 }

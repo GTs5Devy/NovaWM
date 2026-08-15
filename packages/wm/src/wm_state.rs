@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 use anyhow::Context;
 use tokio::sync::mpsc::{self};
@@ -15,7 +15,7 @@ use crate::{
   commands::{
     container::set_focused_descendant,
     general::platform_sync,
-    monitor::{add_monitor, move_bounded_workspaces_to_new_monitor},
+    monitor::{add_monitor, ensure_workspaces_for_monitor},
     window::{manage_window, unmanage_window},
   },
   models::{
@@ -36,11 +36,11 @@ pub struct WmState {
 
   pub pending_sync: PendingSync,
 
-  /// Name of the most recently focused workspace.
+  /// Name of the most recently focused workspace per monitor.
   ///
   /// Used for the `general.toggle_workspace_on_refocus` option on
   /// workspace focus.
-  pub recent_workspace_name: Option<String>,
+  pub recent_workspace_name_by_monitor: HashMap<Uuid, String>,
 
   /// The previously focused window that had focus effects applied.
   ///
@@ -88,7 +88,7 @@ impl WmState {
       dispatcher,
       pending_sync: PendingSync::default(),
       prev_effects_window: None,
-      recent_workspace_name: None,
+      recent_workspace_name_by_monitor: HashMap::new(),
       unmanaged_or_minimized_timestamp: None,
       binding_modes: Vec::new(),
       ignored_windows: Vec::new(),
@@ -117,7 +117,7 @@ impl WmState {
       {
         let monitor =
           add_monitor(native_display, native_properties, self)?;
-        move_bounded_workspaces_to_new_monitor(&monitor, self, config)?;
+        ensure_workspaces_for_monitor(&monitor, self, config)?;
       }
     }
 
@@ -176,13 +176,6 @@ impl WmState {
       .iter()
       .flat_map(Monitor::workspaces)
       .collect()
-  }
-
-  /// Gets workspaces sorted by their position in the user config.
-  pub fn sorted_workspaces(&self, config: &UserConfig) -> Vec<Workspace> {
-    let mut workspaces = self.workspaces();
-    config.sort_workspaces(&mut workspaces);
-    workspaces
   }
 
   pub fn windows(&self) -> Vec<WindowContainer> {
@@ -338,11 +331,12 @@ impl WmState {
       .find(|window| &*window.native() == native_window)
   }
 
-  pub fn workspace_by_name(
+  pub fn workspace_by_name_in_monitor(
     &self,
+    monitor: &Monitor,
     workspace_name: &str,
   ) -> Option<Workspace> {
-    self
+    monitor
       .workspaces()
       .into_iter()
       .find(|workspace| workspace.config().name == workspace_name)
@@ -361,29 +355,56 @@ impl WmState {
   ) -> anyhow::Result<(Option<String>, Option<Workspace>)> {
     let (name, workspace) = match target {
       WorkspaceTarget::Name(name) => {
+        let origin_monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
         #[allow(clippy::match_bool)]
         match origin_workspace.config().name == name {
-          false => (Some(name.clone()), self.workspace_by_name(&name)),
-          // Toggle the workspace if it's already focused.
-          true if config.value.general.toggle_workspace_on_refocus => (
-            self.recent_workspace_name.clone(),
-            self
-              .recent_workspace_name
-              .as_ref()
-              .and_then(|name| self.workspace_by_name(name)),
+          false => (
+            Some(name.clone()),
+            self.workspace_by_name_in_monitor(&origin_monitor, &name),
           ),
+          // Toggle the workspace if it's already focused.
+          true if config.value.general.toggle_workspace_on_refocus => {
+            let recent_workspace_name = self
+              .recent_workspace_name_by_monitor
+              .get(&origin_monitor.id());
+
+            (
+              recent_workspace_name.cloned(),
+              recent_workspace_name.and_then(|name| {
+                self.workspace_by_name_in_monitor(&origin_monitor, name)
+              }),
+            )
+          }
           true => (None, None),
         }
       }
-      WorkspaceTarget::Recent => (
-        self.recent_workspace_name.clone(),
-        self
-          .recent_workspace_name
-          .as_ref()
-          .and_then(|name| self.workspace_by_name(name)),
-      ),
+      WorkspaceTarget::Recent => {
+        let origin_monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
+        let recent_workspace_name = self
+          .recent_workspace_name_by_monitor
+          .get(&origin_monitor.id());
+
+        (
+          recent_workspace_name.cloned(),
+          recent_workspace_name.and_then(|name| {
+            self.workspace_by_name_in_monitor(&origin_monitor, name)
+          }),
+        )
+      }
       WorkspaceTarget::NextActive => {
-        let active_workspaces = self.sorted_workspaces(config);
+        let monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
+        let mut active_workspaces = monitor.workspaces();
+        config.sort_workspaces(&mut active_workspaces);
+
         let origin_index = active_workspaces
           .iter()
           .position(|workspace| workspace.id() == origin_workspace.id())
@@ -399,7 +420,13 @@ impl WmState {
         )
       }
       WorkspaceTarget::PreviousActive => {
-        let active_workspaces = self.sorted_workspaces(config);
+        let monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
+        let mut active_workspaces = monitor.workspaces();
+        config.sort_workspaces(&mut active_workspaces);
+
         let origin_index = active_workspaces
           .iter()
           .position(|workspace| workspace.id() == origin_workspace.id())
@@ -479,9 +506,14 @@ impl WmState {
         let next_workspace_name =
           next_workspace_config.map(|config| config.name.clone());
 
-        let next_workspace = next_workspace_name
-          .as_ref()
-          .and_then(|name| self.workspace_by_name(name));
+        let monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
+        let next_workspace =
+          next_workspace_name.as_ref().and_then(|name| {
+            self.workspace_by_name_in_monitor(&monitor, name)
+          });
 
         (next_workspace_name, next_workspace)
       }
@@ -500,9 +532,14 @@ impl WmState {
         let previous_workspace_name =
           previous_workspace_config.map(|config| config.name.clone());
 
-        let previous_workspace = previous_workspace_name
-          .as_ref()
-          .and_then(|name| self.workspace_by_name(name));
+        let monitor = origin_workspace
+          .monitor()
+          .context("No monitor in workspace")?;
+
+        let previous_workspace =
+          previous_workspace_name.as_ref().and_then(|name| {
+            self.workspace_by_name_in_monitor(&monitor, name)
+          });
 
         (previous_workspace_name, previous_workspace)
       }

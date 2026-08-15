@@ -31,7 +31,7 @@ use crate::{
       update_window_state, WindowPositionTarget,
     },
     workspace::{
-      focus_workspace, move_workspace_in_direction,
+      focus_all_workspaces, focus_workspace, move_workspace_in_direction,
       update_workspace_config,
     },
   },
@@ -330,6 +330,9 @@ impl WindowManager {
 
         Ok(())
       }
+      InvokeCommand::FocusAllWorkspaces { workspace } => {
+        focus_all_workspaces(workspace, state, config)
+      }
       InvokeCommand::Ignore => {
         match subject_container.as_window_container() {
           Ok(window) => ignore_window(window, state),
@@ -465,9 +468,13 @@ impl WindowManager {
         new_config,
       } => {
         let workspace = if let Some(workspace_name) = workspace {
+          let monitor = subject_container
+            .monitor()
+            .context("No monitor for command subject.")?;
+
           state
-            .workspace_by_name(workspace_name)
-            .context("Workspace doesn't exist.")?
+            .workspace_by_name_in_monitor(&monitor, workspace_name)
+            .context("Workspace doesn't exist on this monitor.")?
         } else {
           subject_container.workspace().context("No workspace.")?
         };

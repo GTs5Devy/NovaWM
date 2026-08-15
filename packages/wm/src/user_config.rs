@@ -284,16 +284,28 @@ impl UserConfig {
     pending_window_rules
   }
 
-  pub fn inactive_workspace_configs(
+  pub fn workspace_config_by_name(
     &self,
-    active_workspaces: &[Workspace],
+    workspace_name: &str,
+  ) -> Option<&WorkspaceConfig> {
+    self
+      .value
+      .workspaces
+      .iter()
+      .find(|config| config.name == workspace_name)
+  }
+
+  pub fn inactive_workspace_configs_for_monitor(
+    &self,
+    monitor: &Monitor,
   ) -> Vec<&WorkspaceConfig> {
     self
       .value
       .workspaces
       .iter()
       .filter(|config| {
-        !active_workspaces
+        !monitor
+          .workspaces()
           .iter()
           .any(|workspace| workspace.config().name == config.name)
       })
@@ -303,10 +315,9 @@ impl UserConfig {
   pub fn workspace_config_for_monitor(
     &self,
     monitor: &Monitor,
-    active_workspaces: &[Workspace],
   ) -> Option<&WorkspaceConfig> {
     let inactive_configs =
-      self.inactive_workspace_configs(active_workspaces);
+      self.inactive_workspace_configs_for_monitor(monitor);
 
     inactive_configs.into_iter().find(|&config| {
       config
@@ -322,10 +333,10 @@ impl UserConfig {
   /// don't have a monitor binding.
   pub fn next_inactive_workspace_config(
     &self,
-    active_workspaces: &[Workspace],
+    monitor: &Monitor,
   ) -> Option<&WorkspaceConfig> {
     let inactive_configs =
-      self.inactive_workspace_configs(active_workspaces);
+      self.inactive_workspace_configs_for_monitor(monitor);
 
     inactive_configs
       .iter()

@@ -24,17 +24,11 @@ pub fn activate_workspace(
   state: &mut WmState,
   config: &UserConfig,
 ) -> anyhow::Result<()> {
-  let workspace_config = workspace_config(
-    workspace_name,
-    target_monitor.clone(),
-    state,
-    config,
-  )?;
-
   let target_monitor = target_monitor
     .or_else(|| {
-      workspace_config
-        .bind_to_monitor
+      workspace_name
+        .and_then(|name| config.workspace_config_by_name(name))
+        .and_then(|workspace_config| workspace_config.bind_to_monitor)
         .and_then(|index| {
           state
             .monitors()
@@ -48,6 +42,21 @@ pub fn activate_workspace(
         })
     })
     .context("Failed to get a target monitor for the workspace.")?;
+
+  let workspace_config =
+    workspace_config(workspace_name, &target_monitor, config)?;
+
+  if let Some(workspace_name) = workspace_name {
+    if target_monitor
+      .workspaces()
+      .into_iter()
+      .any(|workspace| workspace.config().name == workspace_name)
+    {
+      anyhow::bail!(
+        "Workspace with name '{workspace_name}' already exists on the target monitor."
+      );
+    }
+  }
 
   let monitor_rect = target_monitor.to_rect()?;
 
@@ -84,30 +93,20 @@ pub fn activate_workspace(
 /// Gets config for the workspace to activate.
 fn workspace_config(
   workspace_name: Option<&str>,
-  target_monitor: Option<Monitor>,
-  state: &mut WmState,
+  target_monitor: &Monitor,
   config: &UserConfig,
 ) -> anyhow::Result<WorkspaceConfig> {
   let found_config = match workspace_name {
     Some(workspace_name) => config
-      .inactive_workspace_configs(&state.workspaces())
-      .into_iter()
-      .find(|config| config.name == workspace_name)
+      .workspace_config_by_name(workspace_name)
       .with_context(|| {
         format!(
-          "Workspace with name '{workspace_name}' doesn't exist or is already active."
+          "Workspace with name '{workspace_name}' doesn't exist in config."
         )
       }),
-    None => target_monitor
-      .and_then(|target_monitor| {
-        config.workspace_config_for_monitor(
-          &target_monitor,
-          &state.workspaces(),
-        )
-      })
-      .or_else(|| {
-        config.next_inactive_workspace_config(&state.workspaces())
-      })
+    None => config
+      .workspace_config_for_monitor(target_monitor)
+      .or_else(|| config.next_inactive_workspace_config(target_monitor))
       .context("No workspace config available to activate workspace."),
   };
 

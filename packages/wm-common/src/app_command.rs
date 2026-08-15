@@ -158,6 +158,10 @@ pub enum InvokeCommand {
   AdjustBorders(InvokeAdjustBordersCommand),
   Close,
   Focus(InvokeFocusCommand),
+  FocusAllWorkspaces {
+    #[clap(required = true, allow_hyphen_values = true)]
+    workspace: String,
+  },
   Ignore,
   Move(InvokeMoveCommand),
   MoveWorkspace {

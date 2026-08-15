@@ -31,9 +31,14 @@ pub fn move_window_to_workspace(
     Some(_) => anyhow::Ok(target_workspace),
     _ => match target_workspace_name {
       Some(name) => {
-        activate_workspace(Some(&name), None, state, config)?;
+        activate_workspace(
+          Some(&name),
+          Some(current_monitor.clone()),
+          state,
+          config,
+        )?;
 
-        Ok(state.workspace_by_name(&name))
+        Ok(state.workspace_by_name_in_monitor(&current_monitor, &name))
       }
       _ => Ok(None),
     },

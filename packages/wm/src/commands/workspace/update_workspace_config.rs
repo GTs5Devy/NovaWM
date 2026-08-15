@@ -18,8 +18,15 @@ pub fn update_workspace_config(
   // Validate the workspace name change.
   if let Some(new_name) = &new_config.name {
     if new_name != &current_config.name {
-      if let Some(_other_workspace) = state.workspace_by_name(new_name) {
-        anyhow::bail!("The workspace \"{}\" already exists", new_name);
+      let monitor = workspace.monitor().context("No monitor.")?;
+
+      if let Some(_other_workspace) =
+        state.workspace_by_name_in_monitor(&monitor, new_name)
+      {
+        anyhow::bail!(
+          "The workspace \"{}\" already exists on this monitor",
+          new_name
+        );
       }
     }
   }
